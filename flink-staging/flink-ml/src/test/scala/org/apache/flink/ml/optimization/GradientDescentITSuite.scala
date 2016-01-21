@@ -251,7 +251,7 @@ class GradientDescentITSuite extends FlatSpec with Matchers with FlinkTestBase {
       .setStepsize(1.0)
       .setIterations(800)
       .setLossFunction(lossFunction)
-      .setOptimizationMethod("xu")
+      .setLearningRateMethod(LearningRateMethod.Xu)
       .setDecay(-0.75)
 
     val inputDS = env.fromCollection(data)

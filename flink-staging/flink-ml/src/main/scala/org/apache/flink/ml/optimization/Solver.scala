@@ -23,6 +23,7 @@ import org.apache.flink.ml.common._
 import org.apache.flink.ml.math.{SparseVector, DenseVector}
 import org.apache.flink.api.scala._
 import org.apache.flink.ml.optimization.IterativeSolver._
+import org.apache.flink.ml.optimization.LearningRateMethod.LearningRateMethodTrait
 
 /** Base class for optimization algorithms
  *
@@ -132,8 +133,8 @@ abstract class IterativeSolver() extends Solver {
     this
   }
 
-  def setOptimizationMethod(optimizationMethod: String): this.type = {
-    parameters.add(OptimizationMethod, optimizationMethod)
+  def setLearningRateMethod(learningRateMethod: LearningRateMethodTrait): this.type = {
+    parameters.add(LearningRateMethodValue, learningRateMethod)
     this
   }
 
@@ -160,11 +161,81 @@ object IterativeSolver {
     val defaultValue = None
   }
 
-  case object OptimizationMethod extends Parameter[String] {
-    val defaultValue = Some("default")
+  case object LearningRateMethodValue extends Parameter[LearningRateMethodTrait] {
+    val defaultValue = Some(LearningRateMethod.Default)
   }
 
   case object Decay extends Parameter[Double] {
     val defaultValue = Some(0.0)
+  }
+}
+
+object LearningRateMethod {
+
+  sealed trait LearningRateMethodTrait extends Serializable {
+    def calculateLearningRate(
+      initialLearningRate: Double,
+      iteration: Int,
+      regularizationConstant: Double,
+      decay: Double)
+    : Double
+  }
+
+  object Default extends LearningRateMethodTrait {
+    override def calculateLearningRate(
+      initialLearningRate: Double,
+      iteration: Int,
+      regularizationConstant: Double,
+      decay: Double)
+    : Double = {
+      initialLearningRate / Math.sqrt(iteration)
+    }
+  }
+
+  object Constant extends LearningRateMethodTrait {
+    override def calculateLearningRate(
+      initialLearningRate: Double,
+      iteration: Int,
+      regularizationConstant: Double,
+      decay: Double)
+    : Double = {
+      initialLearningRate
+    }
+  }
+
+  object Bottou extends LearningRateMethodTrait {
+    override def calculateLearningRate(
+      initialLearningRate: Double,
+      iteration: Int,
+      regularizationConstant: Double,
+      decay: Double)
+    : Double = {
+      1 /
+        (regularizationConstant *
+          (1 / (initialLearningRate * regularizationConstant) + iteration - 1))
+    }
+  }
+
+  object InvScaling extends LearningRateMethodTrait {
+    override def calculateLearningRate(
+      initialLearningRate: Double,
+      iteration: Int,
+      regularizationConstant: Double,
+      decay: Double)
+    : Double = {
+      1 / Math.pow(iteration, decay)
+    }
+  }
+
+  object Xu extends LearningRateMethodTrait {
+    override def calculateLearningRate(
+      initialLearningRate: Double,
+      iteration: Int,
+      regularizationConstant: Double,
+      decay: Double)
+    : Double = {
+      initialLearningRate *
+        Math.pow(1 + regularizationConstant * initialLearningRate * iteration, decay)
+    }
   }
 }
